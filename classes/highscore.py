@@ -3,23 +3,24 @@ from operator import itemgetter
 import sys
 
 class HighScores:
-    def __init__(self, fileName, amount):
+    def __init__(self, fileName, amount, trim = False, sort = True):
         self.fileName = fileName
+        self.allScores = []
         self.highScores = [None] * amount
         self._parse_file()
+        self.trim = trim
+        self.sort = sort
         
     def _parse_file(self):
         try:
             with open(self.fileName, 'rt') as csvfile:
                 reader = csv.reader(csvfile, delimiter=',', quotechar='|')
-            
-                highScores = []
+
+                self.allScores = []
                 for row in reader:
-                    row[1] = float(row[1])
-                    highScores.append(tuple(row))
-                    highScores = sorted(highScores, key=itemgetter(1, 0), reverse=True)
+                    self.add_score(row[0], float(row[1]), write = False)
                 
-            for i, score in enumerate(highScores):
+            for i, score in enumerate(self.allScores):
                 if i <= len(self.highScores) - 1:
                     self.highScores[i] = score
         except FileNotFoundError:
@@ -27,16 +28,18 @@ class HighScores:
             raise
         except IndexError:
             print("No high scores found, or inappropriate file format")
-            pass
+            raise
         except:
             print("Unexpected error:", sys.exc_info()[0])
             raise
         
-    def _write_score(self, score):
+    def _write_scores(self):
         try:
-            with open(self.fileName, 'w') as csvfile:
+            with open(self.fileName, 'w', newline='\n') as csvfile:
                 writer = csv.writer(csvfile, delimiter=',')
-                writer.writerow(score)
+                for row in self.allScores:
+                    data = [[row[0], row[1]]]
+                    writer.writerows(data)
         except FileNotFoundError:
             print("File not found at", self.fileName)
             raise
@@ -44,7 +47,7 @@ class HighScores:
             print("Unexpected error:", sys.exc_info()[0])
             raise            
         
-    def add_score(self, player, score):
+    def add_score(self, player, score, write = True):
         try:
             player = str(player)
         except:
@@ -56,12 +59,14 @@ class HighScores:
         except:
             print("Score could not be converted to a float.")
             raise
-        scoreInfo = (player, score)
-        print(scoreInfo)
-
-        self._write_score(scoreInfo)
+        
+        self.allScores.append(tuple((player, score)))
+        temp = sorted(self.allScores, key=itemgetter(1, 0), reverse=True)
+        if (write):
+            self._write_scores()
         
     def __str__(self):
+        self._parse_file()
         string = "File Name: %s\n\nAmount of High Scores: %s\n" % (self.fileName, len(self.highScores))
         for score in self.highScores:
             try:
