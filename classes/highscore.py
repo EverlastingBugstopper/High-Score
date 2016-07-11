@@ -1,19 +1,23 @@
 import csv
 from operator import itemgetter
 import sys
+import os
 
 class HighScores:
-    def __init__(self, fileName, amount, trim = False, sort = True):
+    def __init__(self, fileName, amount, trim = False):
         self.fileName = fileName
         self.allScores = []
-        self.highScores = [None] * amount
+        self.amount = amount
         self._parse_file()
         self.trim = trim
-        self.sort = sort
         
     def _parse_file(self):
         try:
-            with open(self.fileName, 'rt') as csvfile:
+            if (os.path.isfile(self.fileName)):
+                openType = 'rt'
+            else:
+                openType = 'w+'
+            with open(self.fileName, openType) as csvfile:
                 reader = csv.reader(csvfile, delimiter=',', quotechar='|')
 
                 self.allScores = []
@@ -21,25 +25,27 @@ class HighScores:
                     self.add_score(row[0], float(row[1]), write = False)
                 
             for i, score in enumerate(self.allScores):
-                if i <= len(self.highScores) - 1:
-                    self.highScores[i] = score
+                if i <= len(self.allScores) - 1:
+                    self.allScores[i] = score
+                    
         except FileNotFoundError:
-            print("File not found at", self.fileName)
+            print("Directory of", self.fileName, "not found.")
             raise
         except IndexError:
             print("No high scores found, or inappropriate file format")
             raise
         except:
             print("Unexpected error:", sys.exc_info()[0])
-            raise
+            raise        
         
     def _write_scores(self):
         try:
             with open(self.fileName, 'w', newline='\n') as csvfile:
                 writer = csv.writer(csvfile, delimiter=',')
-                for row in self.allScores:
-                    data = [[row[0], row[1]]]
-                    writer.writerows(data)
+                for i, row in enumerate(self.allScores):
+                    if ((not self.trim) or i < self.amount):
+                        data = [[row[0], row[1]]]
+                        writer.writerows(data)
         except FileNotFoundError:
             print("File not found at", self.fileName)
             raise
@@ -61,16 +67,24 @@ class HighScores:
             raise
         
         self.allScores.append(tuple((player, score)))
-        temp = sorted(self.allScores, key=itemgetter(1, 0), reverse=True)
+        self._sort()
         if (write):
             self._write_scores()
+
+    def _sort(self):
+        self.allScores = sorted(self.allScores, key = itemgetter(1, 0), reverse = True)
         
     def __str__(self):
         self._parse_file()
-        string = "File Name: %s\n\nAmount of High Scores: %s\n" % (self.fileName, len(self.highScores))
-        for score in self.highScores:
+        if (self.amount < len(self.allScores)):
+            amount = self.amount
+        else:
+            amount = len(self.allScores)
+        string = "File Name: %s\n\nAmount of High Scores: %s\n" % (self.fileName, amount)
+        for i, score in enumerate(self.allScores):
             try:
-                string += "\n" + str(score[0]) + ": " + str(score[1])
+                if (i < self.amount):
+                    string += "\n" + str(score[0]) + ": " + str(score[1])
             except TypeError:
                 if score is not None:
                     print("Unexpected type error:", sys.exc_info()[0])
